@@ -4,17 +4,16 @@
   <name>Practice Booking</name>
   <description>Appointment booking for practices with several practitioners sharing one or more rooms. Public WordPress form, room and practitioner availability, CalDAV sync.</description>
   <urls>
-    <url desc="Main Extension Page">https://github.com/fredatipik/ch.ipik.practicebooking</url>
-    <url desc="Documentation">https://github.com/fredatipik/ch.ipik.practicebooking/blob/main/INSTALL.md</url>
-    <url desc="Support">https://github.com/fredatipik/ch.ipik.practicebooking/issues</url>
-    <url desc="Licensing">https://www.gnu.org/licenses/agpl-3.0.html</url>
+    <url desc="Main">https://lab.civicrm.org/extensions/practicebooking</url>
+    <url desc="Documentation">https://lab.civicrm.org/extensions/practicebooking/-/blob/main/README.md</url>
+    <url desc="Bugs">https://lab.civicrm.org/extensions/practicebooking/-/issues</url>
   </urls>
   <license>AGPL-3.0</license>
   <maintainer>
     <author>Frédéric Hiltbrand — IPIK</author>
-    <email>fred@ipik.ch</email>
+    <email>fh@ipik.ch</email>
   </maintainer>
-  <releaseDate>2026-09-06</releaseDate>
+  <releaseDate>2026-09-23</releaseDate>
   <version>0.5.0</version>
   <develStage>beta</develStage>
   <compatibility>
