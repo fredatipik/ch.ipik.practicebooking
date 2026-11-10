@@ -1,6 +1,6 @@
 <?php
 /**
- * ch.ipik.practicebooking v0.5.0 — Extension CiviCRM de prise de rendez-vous
+ * ch.ipik.practicebooking v0.6.0 — Extension CiviCRM de prise de rendez-vous
  * Fichier principal — hooks CiviCRM
  */
 

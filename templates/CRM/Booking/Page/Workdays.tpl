@@ -48,15 +48,16 @@
           <div class="ipik-wd-dow">D</div>
           {foreach from=$month.cells item=cell}
             {if $cell}
-              <button type="button"
-                      class="ipik-wd-day{if $cell.selected} is-on{/if}{if $cell.is_past} is-past{/if}{if $cell.is_today} is-today{/if}"
-                      data-date="{$cell.date}"
-                      data-start="{$cell.start}"
-                      data-end="{$cell.end}"
-                      data-location="{$cell.location}"
-                      {if $cell.color}style="--wd-color:{$cell.color}"{/if}
-                      {if $cell.is_past}disabled="disabled"{/if}
-                      title="{$cell.date}{if $cell.selected} · {$cell.start}–{$cell.end}{/if}">{$cell.day}</button>
+              <div role="button"
+                   class="ipik-wd-day{if $cell.selected} is-on{/if}{if $cell.is_past} is-past{/if}{if $cell.is_today} is-today{/if}"
+                   data-date="{$cell.date}"
+                   data-start="{$cell.start}"
+                   data-end="{$cell.end}"
+                   data-location="{$cell.location}"
+                   {if $cell.color}style="--wd-color:{$cell.color}"{/if}
+                   {if $cell.is_past}aria-disabled="true" tabindex="-1"{else}aria-disabled="false" tabindex="0"{/if}
+                   aria-pressed="{if $cell.selected}true{else}false{/if}"
+                   title="{$cell.date}{if $cell.selected} · {$cell.start}–{$cell.end}{/if}">{$cell.day}</div>
             {else}
               <span class="ipik-wd-day is-empty"></span>
             {/if}
@@ -93,45 +94,37 @@
   font-weight:600; font-size:.88rem; margin-bottom:.4rem;
   padding-bottom:.25rem; border-bottom:1px solid #e5e7eb;
 }
-/* Les boutons sont repris par le thème CiviCRM (fond plein, hauteur minimale,
-   marges) : chaque propriété structurante est donc imposée, avec une
-   spécificité supérieure à celle du thème. */
+/* Les cases sont des <div role="button"> et non des <button> : les thèmes
+   CiviCRM restylent les boutons (fond plein, hauteur minimale, marges, états
+   désactivés), ce qui défigurait le calendrier malgré toutes les règles
+   imposées. Un <div> n'est pas touché par ces styles. */
+.ipik-workdays .ipik-wd-month { max-width:330px; }
 .ipik-workdays .ipik-wd-days {
   display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:3px;
 }
-.ipik-workdays .ipik-wd-days .ipik-wd-dow {
-  display:block !important; text-align:center !important;
-  font-size:.68rem; color:#9ca3af; padding-bottom:.2rem;
+.ipik-workdays .ipik-wd-dow {
+  text-align:center; font-size:.68rem; color:#9ca3af; padding-bottom:.2rem;
 }
-.ipik-workdays .ipik-wd-days .ipik-wd-day {
-  box-sizing:border-box !important;
-  display:flex !important; align-items:center !important; justify-content:center !important;
-  width:100% !important; min-width:0 !important; height:auto !important; min-height:0 !important;
-  aspect-ratio:1 / 1 !important;
-  margin:0 !important; padding:0 !important;
-  border:1px solid transparent !important; border-radius:4px !important;
-  background:transparent !important; background-image:none !important;
-  box-shadow:none !important; text-shadow:none !important;
-  color:inherit !important; font-family:inherit !important; font-size:.78rem !important;
-  font-weight:400 !important; line-height:1 !important;
-  text-transform:none !important; letter-spacing:normal !important;
-  cursor:pointer !important;
+.ipik-workdays .ipik-wd-day {
+  box-sizing:border-box; aspect-ratio:1 / 1;
+  display:flex; align-items:center; justify-content:center;
+  border:1px solid transparent; border-radius:5px;
+  font-size:.8rem; line-height:1; color:inherit;
+  cursor:pointer; user-select:none; -webkit-user-select:none;
   transition:background .12s, border-color .12s;
 }
-.ipik-workdays .ipik-wd-days .ipik-wd-day:hover:not(:disabled) {
-  background:#eef2ff !important; border-color:#c7d2fe !important;
+.ipik-workdays .ipik-wd-day:hover { background:#eef2ff; border-color:#c7d2fe; }
+.ipik-workdays .ipik-wd-day:focus-visible { outline:2px solid #6366f1; outline-offset:1px; }
+.ipik-workdays .ipik-wd-day.is-empty { visibility:hidden; cursor:default; }
+.ipik-workdays .ipik-wd-day.is-past  { color:#c4c9d1; cursor:not-allowed; }
+.ipik-workdays .ipik-wd-day.is-past:hover { background:transparent; border-color:transparent; }
+.ipik-workdays .ipik-wd-day.is-today { font-weight:700; text-decoration:underline; }
+.ipik-workdays .ipik-wd-day.is-on {
+  background:var(--wd-color, #10b981); border-color:var(--wd-color, #10b981);
+  color:#fff; font-weight:600;
 }
-.ipik-workdays .ipik-wd-days .ipik-wd-day.is-empty { visibility:hidden !important; cursor:default !important; }
-.ipik-workdays .ipik-wd-days .ipik-wd-day.is-past  { color:#c4c9d1 !important; cursor:not-allowed !important; }
-.ipik-workdays .ipik-wd-days .ipik-wd-day.is-today { font-weight:700 !important; text-decoration:underline !important; }
-.ipik-workdays .ipik-wd-days .ipik-wd-day.is-on {
-  background:var(--wd-color, #10b981) !important; color:#fff !important; font-weight:600 !important;
-  border-color:var(--wd-color, #10b981) !important;
-}
-.ipik-workdays .ipik-wd-days .ipik-wd-day.is-on:hover:not(:disabled) {
-  opacity:.85; background:var(--wd-color, #10b981) !important;
-}
-.ipik-workdays .ipik-wd-days .ipik-wd-day.is-saving { opacity:.5 !important; }
+.ipik-workdays .ipik-wd-day.is-on:hover { opacity:.85; background:var(--wd-color, #10b981); }
+.ipik-workdays .ipik-wd-day.is-saving { opacity:.5; pointer-events:none; }
 
 .ipik-wd-footer { margin-top:1.5rem; }
 </style>
@@ -175,9 +168,10 @@
     }).then(function (r) { return r.json(); });
   }
 
-  root.addEventListener('click', function (event) {
-    var btn = event.target.closest('.ipik-wd-day');
-    if (!btn || btn.disabled || btn.classList.contains('is-empty')) return;
+  function toggle(btn) {
+    if (!btn || btn.classList.contains('is-empty')
+      || btn.getAttribute('aria-disabled') === 'true'
+      || btn.classList.contains('is-saving')) return;
 
     var isOn = btn.classList.contains('is-on');
     btn.classList.add('is-saving');
@@ -204,6 +198,7 @@
 
       if (res.selected) {
         btn.classList.add('is-on');
+        btn.setAttribute('aria-pressed', 'true');
         btn.dataset.start    = res.start;
         btn.dataset.end      = res.end;
         btn.dataset.location = res.location_id || '';
@@ -212,6 +207,7 @@
         btn.title = btn.dataset.date + ' · ' + res.start + '–' + res.end;
       } else {
         btn.classList.remove('is-on');
+        btn.setAttribute('aria-pressed', 'false');
         btn.dataset.start = btn.dataset.end = btn.dataset.location = '';
         btn.style.removeProperty('--wd-color');
         btn.title = btn.dataset.date;
@@ -222,6 +218,19 @@
       btn.classList.remove('is-saving');
       say('Erreur de communication avec le serveur.', true);
     });
+  }
+
+  root.addEventListener('click', function (event) {
+    toggle(event.target.closest('.ipik-wd-day'));
+  });
+
+  // Entrée ou Espace, comme pour un vrai bouton
+  root.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    var btn = event.target.closest('.ipik-wd-day');
+    if (!btn) return;
+    event.preventDefault();
+    toggle(btn);
   });
 })();
 </script>

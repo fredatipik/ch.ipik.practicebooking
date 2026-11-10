@@ -35,8 +35,8 @@ class BookingShortcode {
     // fichiers : remplacer un fichier par FTP force le navigateur à le
     // recharger, sans qu'il soit nécessaire de toucher à un numéro.
     $root   = dirname(__DIR__);
-    $cssVer = (string) (@filemtime($root . '/css/booking.css') ?: '0.5.0');
-    $jsVer  = (string) (@filemtime($root . '/js/booking-form.js') ?: '0.5.0');
+    $cssVer = (string) (@filemtime($root . '/css/booking.css') ?: '0.6.0');
+    $jsVer  = (string) (@filemtime($root . '/js/booking-form.js') ?: '0.6.0');
 
     wp_enqueue_style('ipik-booking', Utils::resourceUrl() . '/css/booking.css', [], $cssVer);
     wp_enqueue_script('ipik-booking', Utils::resourceUrl() . '/js/booking-form.js', [], $jsVer, TRUE);

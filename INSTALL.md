@@ -87,7 +87,12 @@ and apply to subsequent clicks; a second click removes the day.
 
 **Booking → Appointment types → New**
 
-- *Existing contacts only* — restricts the type to patients already in CiviCRM
+- *Restricted to logged-in patients* — the visitor must be logged in to the site
+  with a WordPress account linked to a CiviCRM contact. Others are invited to
+  log in; an account with no linked contact gets a message asking them to get
+  in touch. There is deliberately no email-based check: it would prove nothing
+  (anyone can type someone else's address) and would let visitors probe which
+  addresses belong to patients.
 - *Require WordPress account* — creates an account on first booking
 - *Slot interval* — empty falls back to the general setting
 - Eligible practitioners
@@ -136,7 +141,7 @@ offers two buttons:
 
 The contact is passed as `cid` in both cases.
 
-### 8. Creating an appointment from the back office
+### 8. Creating or editing an appointment from the back office
 
 A *New appointment* button appears on the *All appointments* page and on each
 practitioner's agenda.
@@ -152,6 +157,23 @@ verification — useful on the phone, for urgent cases.
 
 Confirmation emails are sent by default; a checkbox skips them when the person
 has already been told.
+
+**Editing.** An ✎ icon on the *All appointments* page and on each
+practitioner's agenda opens the same form for a confirmed or pending
+appointment. Type, practitioner, time, room and notes can change; the patient
+cannot — for another patient, cancel the appointment and create a new one.
+
+The time defaults to *Keep the current time*. The free slots offered exclude the
+appointment's own slot, so to shift it by a few minutes use manual entry. The
+room is kept by default; choose *Deduce automatically* to recompute it from the
+working day when the date or the practitioner changes.
+
+On saving, the events are removed from the previous practitioner's and room
+calendars and written again, and the CiviCRM activity is updated. A checkbox
+*Resend the appointment email* sends the confirmation again to the patient and
+to the practitioner. It is ticked automatically as soon as the time, the type or
+the practitioner changes, and can be unticked. The previous practitioner is not
+notified by email.
 
 ### 9. Public form
 
@@ -179,6 +201,14 @@ shortcode says.
 For a logged-in visitor whose WordPress account is linked to a CiviCRM
 contact, the form is pre-filled and remains editable.
 
+**Restricted types.** A type restricted to patients requires a logged-in
+visitor with a linked contact. A visitor who is not logged in sees a login
+prompt with a *Log in* button that brings them back to the form; the calendar is
+not opened and the slots are not served. For these types the email address is
+locked and the booking is made on the contact of the session, never on an
+address typed into the form. Patients therefore need a WordPress account linked
+to their CiviCRM contact before such a type is switched on.
+
 ### 10. Sending emails
 
 **Booking → Settings → Sending emails**
@@ -198,8 +228,8 @@ these messages apart from other outgoing mail.
 **Booking → Settings → Public form wording**
 
 Four sentences address patients directly and can be edited without touching
-the code: the email verification prompt for restricted types, the refusal when
-an address is not recognised, the absence of available slots, and the booking
+the code: the login prompt for restricted types, the message for a logged-in
+account with no patient record, the absence of available slots, and the booking
 confirmation.
 
 An empty field keeps the supplied text, shown greyed out in the field.
@@ -261,6 +291,10 @@ untick *Create a CiviCRM activity for each appointment* in Settings. The
 appointment is still recorded and synchronised with CalDAV calendars, but
 leaves no trace among activities — at the cost of no longer appearing in the
 patient's record history.
+
+**Restricted types** require a login rather than an email address: the form
+never confirms or denies that an address belongs to a patient, and a booking
+can only be made on the contact of the logged-in session.
 
 **Room calendars** receive only the practitioner's name, as they are shared
 among everyone working in the place.

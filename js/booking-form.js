@@ -1,5 +1,5 @@
 /**
- * ch.ipik.practicebooking v0.5.0 — booking-form.js
+ * ch.ipik.practicebooking v0.6.0 — booking-form.js
  * Formulaire public de prise de rendez-vous.
  */
 (function () {
