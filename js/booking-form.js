@@ -104,9 +104,20 @@
     });
   });
 
+  // Type préréglé par le shortcode : l'étape 1 est sautée et ne doit plus
+  // être atteignable, ni par « Retour » ni par « Nouvelle réservation ».
+  let presetCard = null;
   if (cfg.preType) {
-    const preCard = document.querySelector(`.ipik-type-card[data-type-id="${cfg.preType}"]`);
-    if (preCard) setTimeout(() => preCard.click(), 50);
+    presetCard = document.querySelector(`.ipik-type-card[data-type-id="${cfg.preType}"]`);
+    if (presetCard) {
+      el.backBtns.forEach(btn => {
+        if (btn.dataset.target === 'type') {
+          btn.style.display = 'none';
+          btn.setAttribute('aria-hidden', 'true');
+        }
+      });
+      setTimeout(() => presetCard.click(), 50);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -276,7 +287,11 @@
       if (el.lastNameEl  && u.last_name)  el.lastNameEl.value  = u.last_name;
       if (el.emailEl     && u.email)      el.emailEl.value     = u.email;
     }
-    goTo('type');
+    if (presetCard) {
+      presetCard.click();
+    } else {
+      goTo('type');
+    }
   });
 
   // -------------------------------------------------------------------------

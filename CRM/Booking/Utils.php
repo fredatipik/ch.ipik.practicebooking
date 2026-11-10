@@ -59,6 +59,101 @@ class Utils {
   /**
    * Vérifier si l'extension swissQRinvoice est active.
    */
+  /**
+   * Adresses d'expédition déclarées dans CiviCRM
+   * (Administration → Communications → Adresses d'expédition).
+   *
+   * Lues par l'API, qui sait où CiviCRM les range : une requête SQL directe
+   * sur le groupe d'options ne les retrouve pas sur toutes les versions.
+   *
+   * @return array<int, array{value: string, label: string, is_default: bool}>
+   */
+  private static function fromAddressRows(): array {
+    static $rows = NULL;
+    if ($rows !== NULL) {
+      return $rows;
+    }
+
+    $rows = [];
+    try {
+      $result = \civicrm_api3('OptionValue', 'get', [
+        'option_group_id' => 'from_email_address',
+        'is_active'       => 1,
+        'options'         => ['limit' => 0, 'sort' => 'weight'],
+        'return'          => ['value', 'label', 'is_default'],
+      ]);
+      foreach ($result['values'] as $row) {
+        $label = html_entity_decode((string) ($row['label'] ?? ''), ENT_QUOTES, 'UTF-8');
+        if ($label === '') {
+          continue;
+        }
+        $rows[] = [
+          'value'      => (string) ($row['value'] ?? ''),
+          'label'      => $label,
+          'is_default' => !empty($row['is_default']),
+        ];
+      }
+    }
+    catch (\Throwable $e) {
+      self::logError('Lecture des adresses d\'expédition impossible', [
+        'error' => $e->getMessage(),
+      ]);
+    }
+    return $rows;
+  }
+
+  /**
+   * Adresses proposées dans les paramètres.
+   *
+   * @return array<string, string> valeur de l'option => libellé « "Nom" <adresse> »
+   */
+  public static function getFromAddressOptions(): array {
+    $options = [];
+    foreach (self::fromAddressRows() as $row) {
+      $options[$row['value']] = $row['label'];
+    }
+    return $options;
+  }
+
+  /**
+   * Adresse d'expédition par défaut du domaine, ou chaîne vide.
+   */
+  public static function getDefaultFromAddress(): string {
+    $rows = self::fromAddressRows();
+    foreach ($rows as $row) {
+      if ($row['is_default']) {
+        return $row['label'];
+      }
+    }
+    return $rows[0]['label'] ?? '';
+  }
+
+  /**
+   * Libellé complet correspondant au réglage enregistré, ou chaîne vide.
+   *
+   * Le réglage contient la valeur de l'option. Les versions antérieures y
+   * stockaient le libellé lui-même : il est repris tel quel.
+   */
+  public static function resolveFromSetting(string $stored): string {
+    $stored = trim($stored);
+    if ($stored === '') {
+      return '';
+    }
+
+    foreach (self::fromAddressRows() as $row) {
+      if ($row['value'] === $stored) {
+        return $row['label'];
+      }
+    }
+
+    // Une valeur purement numérique qui ne correspond à rien : option
+    // supprimée depuis, et non un libellé.
+    if (ctype_digit($stored)) {
+      return '';
+    }
+    return html_entity_decode($stored, ENT_QUOTES, 'UTF-8');
+  }
+
   public static function isSwissQRInvoiceActive(): bool {
     static $active = NULL;
     if ($active !== NULL) return $active;
@@ -82,9 +177,9 @@ class Utils {
    */
   public static function getSelectorOptions(): array {
     return [
-      'round_robin'  => ts('Round-robin (fair rotation)'),
-      'least_loaded' => ts('Least busy (fewest appointments in the period)'),
-      'random'       => ts('Random'),
+      'round_robin'  => ts('Round-robin (rotation équitable)'),
+      'least_loaded' => ts('Moins chargé (moins de RDV sur la période)'),
+      'random'       => ts('Aléatoire'),
     ];
   }
 

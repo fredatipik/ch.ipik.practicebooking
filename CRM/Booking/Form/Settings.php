@@ -16,8 +16,8 @@ class Settings extends \CRM_Core_Form {
 
   public function preProcess(): void {
     parent::preProcess();
-    \CRM_Core_Permission::check('administer booking') || \CRM_Core_Error::statusBounce(ts('Access denied.'));
-    $this->setTitle(ts('Booking Settings'));
+    \CRM_Core_Permission::check('administer booking') || \CRM_Core_Error::statusBounce(ts('Accès refusé.'));
+    $this->setTitle(ts('Paramètres Booking'));
     Utils::setBreadCrumb();
 
     // Action de nettoyage des agendas
@@ -29,20 +29,20 @@ class Settings extends \CRM_Core_Form {
 
   public function buildQuickForm(): void {
     // ---- Réservation ----
-    $this->add('select', 'availability_mode', ts('Default availability mode'), [
-      'weekly'   => ts('Weekly schedule'),
-      'workdays' => ts('Declared working days'),
+    $this->add('select', 'availability_mode', ts('Mode de disponibilité par défaut'), [
+      'weekly'   => ts('Horaires hebdomadaires'),
+      'workdays' => ts('Jours de travail déclarés'),
     ], TRUE);
-    $this->add('text', 'default_start_time', ts('Default schedule — start'), ['size' => 6]);
-    $this->add('text', 'default_end_time',   ts('Default schedule — end'),   ['size' => 6]);
+    $this->add('text', 'default_start_time', ts('Horaire par défaut — début'), ['size' => 6]);
+    $this->add('text', 'default_end_time',   ts('Horaire par défaut — fin'),   ['size' => 6]);
 
-    $this->add('checkbox', 'create_activities', ts('Create a CiviCRM activity for each appointment'));
+    $this->add('checkbox', 'create_activities', ts('Créer une activité CiviCRM pour chaque rendez-vous'));
 
-    $this->add('select', 'therapist_selector', ts('Global assignment strategy'), Utils::getSelectorOptions(), TRUE);
-    $this->add('text', 'slot_interval_minutes', ts('Interval between slots (minutes)'), ['size' => 4], TRUE);
-    $this->addRule('slot_interval_minutes', ts('Positive integer required.'), 'positiveInteger');
-    $this->add('text', 'reminder_hours_before', ts('Email reminder (hours before appointment)'), ['size' => 4], TRUE);
-    $this->addRule('reminder_hours_before', ts('Positive integer required.'), 'positiveInteger');
+    $this->add('select', 'therapist_selector', ts('Stratégie d\'attribution globale'), Utils::getSelectorOptions(), TRUE);
+    $this->add('text', 'slot_interval_minutes', ts('Intervalle entre créneaux (minutes)'), ['size' => 4], TRUE);
+    $this->addRule('slot_interval_minutes', ts('Entier positif requis.'), 'positiveInteger');
+    $this->add('text', 'reminder_hours_before', ts('Rappel email (heures avant le RDV)'), ['size' => 4], TRUE);
+    $this->addRule('reminder_hours_before', ts('Entier positif requis.'), 'positiveInteger');
 
     // ---- Textes du formulaire public ----
     foreach (MessageService::definitions() as $key => $def) {
@@ -56,18 +56,18 @@ class Settings extends \CRM_Core_Form {
 
     // ---- Envoi des e-mails ----
     // Liste des adresses déclarées dans CiviCRM, comme pour un envoi individuel
-    $this->add('select', 'from_email', ts('Sender address'),
-      ['' => ts('-- Domain default address --')] + $this->getFromAddresses());
+    $this->add('select', 'from_email', ts('Adresse d\'expédition'),
+      ['' => ts('— Adresse par défaut du domaine —')] + $this->getFromAddresses());
 
     // ---- Agenda CalDAV ----
-    $this->add('text', 'caldav_user', ts('CalDAV username'), ['maxlength' => 255, 'size' => 40]);
-    $this->add('password', 'caldav_password', ts('Password'), ['maxlength' => 255, 'size' => 40]);
+    $this->add('text', 'caldav_user', ts('Identifiant CalDAV'), ['maxlength' => 255, 'size' => 40]);
+    $this->add('password', 'caldav_password', ts('Mot de passe'), ['maxlength' => 255, 'size' => 40]);
 
     // ---- Facturation ----
-    $this->add('select', 'contribution_financial_type_id', ts('Default financial type'),
-      ['' => ts('— None —')] + $this->getFinancialTypes());
-    $this->add('select', 'contribution_status_id', ts('Default contribution status'),
-      ['' => ts('— None —')] + $this->getContributionStatuses());
+    $this->add('select', 'contribution_financial_type_id', ts('Type financier par défaut'),
+      ['' => ts('— Aucun —')] + $this->getFinancialTypes());
+    $this->add('select', 'contribution_status_id', ts('Statut de contribution par défaut'),
+      ['' => ts('— Aucun —')] + $this->getContributionStatuses());
 
     // ---- Modèles d'email ----
     $this->assign('templateLinks', TemplateService::getTemplateLinks());
@@ -77,13 +77,28 @@ class Settings extends \CRM_Core_Form {
     $this->assign('orphanCount', $this->countOrphans());
     $this->assign('cleanupURL',  \CRM_Utils_System::url('civicrm/booking/settings', 'do=cleanup&reset=1'));
 
-    $this->addButtons([['type' => 'submit', 'name' => ts('Save'), 'isDefault' => TRUE]]);
+    $this->addButtons([['type' => 'submit', 'name' => ts('Enregistrer'), 'isDefault' => TRUE]]);
   }
 
   public function setDefaultValues(): array {
     $defaults = [];
     foreach (array_keys(MessageService::definitions()) as $key) {
       $defaults[$key] = Utils::getSetting($key, '');
+    }
+
+    // Le réglage contient la valeur de l'option ; une ancienne version y
+    // stockait le libellé, que l'on rapporte alors à l'option correspondante.
+    $fromChoice = trim((string) Utils::getSetting('from_email', ''));
+    if ($fromChoice !== '') {
+      $fromOptions = Utils::getFromAddressOptions();
+      if (!isset($fromOptions[$fromChoice])) {
+        $found = array_search(
+          html_entity_decode($fromChoice, ENT_QUOTES, 'UTF-8'),
+          $fromOptions,
+          TRUE
+        );
+        $fromChoice = $found === FALSE ? '' : (string) $found;
+      }
     }
 
     return $defaults + [
@@ -94,7 +109,7 @@ class Settings extends \CRM_Core_Form {
       'therapist_selector'             => Utils::getSetting('therapist_selector', 'round_robin'),
       'slot_interval_minutes'          => Utils::getSetting('slot_interval_minutes', 15),
       'reminder_hours_before'          => Utils::getSetting('reminder_hours_before', 24),
-      'from_email'                     => Utils::getSetting('from_email', ''),
+      'from_email'                     => $fromChoice,
       'caldav_user'                    => Utils::getSetting('caldav_user', ''),
       'caldav_password'                => '', // jamais pré-rempli
       'contribution_financial_type_id' => Utils::getSetting('contribution_financial_type_id', ''),
@@ -134,7 +149,7 @@ class Settings extends \CRM_Core_Form {
       Utils::setSetting('caldav_password', $values['caldav_password']);
     }
 
-    \CRM_Core_Session::setStatus(ts('Settings saved.'), ts('Success'), 'success');
+    \CRM_Core_Session::setStatus(ts('Paramètres enregistrés.'), ts('Succès'), 'success');
     \CRM_Utils_System::redirect(\CRM_Utils_System::url('civicrm/booking/settings', 'reset=1'));
   }
 
@@ -143,33 +158,17 @@ class Settings extends \CRM_Core_Form {
   // -------------------------------------------------------------------------
 
   /**
-   * Adresses d'expédition déclarées dans CiviCRM.
-   * Même source que le sélecteur des envois individuels :
-   * Administration → Communications → Adresses d'expédition.
+   * Adresses d'expédition déclarées dans CiviCRM, pour la liste déroulante.
+   * Même source que le sélecteur des envois individuels.
    *
-   * @return array<string, string> Adresse « Nom <email> » => libellé affiché
+   * La clé est la valeur de l'option. Le libellé est transmis tel quel :
+   * CiviCRM échappe lui-même le texte des options, et l'échapper ici le
+   * ferait afficher en double (&quot; au lieu de ").
+   *
+   * @return array<string, string>
    */
   private function getFromAddresses(): array {
-    $options = [];
-    try {
-      $result = \civicrm_api3('OptionValue', 'get', [
-        'option_group_id' => 'from_email_address',
-        'is_active'       => 1,
-        'options'         => ['limit' => 0, 'sort' => 'weight'],
-        'return'          => ['label'],
-      ]);
-      foreach ($result['values'] as $row) {
-        $label = $row['label'] ?? '';
-        if ($label !== '') {
-          // La valeur stockée est le libellé complet « Nom <adresse> »,
-          // que getFromAddress() sait décomposer.
-          $options[$label] = $label;
-        }
-      }
-    }
-    catch (\Throwable $e) {
-    }
-    return $options;
+    return Utils::getFromAddressOptions();
   }
 
   private function getFinancialTypes(): array {
@@ -271,7 +270,7 @@ class Settings extends \CRM_Core_Form {
   private function cleanupOrphans(): void {
     $provider = new InformaniakCalDavProvider();
     if (!$provider->isAvailable()) {
-      \CRM_Core_Session::setStatus(ts('CalDAV credentials missing.'), ts('Failed'), 'error');
+      \CRM_Core_Session::setStatus(ts('Identifiants CalDAV manquants.'), ts('Impossible'), 'error');
       return;
     }
 
@@ -297,8 +296,8 @@ class Settings extends \CRM_Core_Form {
     }
 
     \CRM_Core_Session::setStatus(
-      ts('%1 event(s) removed from calendars.', [1 => $done]),
-      ts('Cleanup complete'), 'success'
+      ts('%1 événement(s) retiré(s) des agendas.', [1 => $done]),
+      ts('Nettoyage terminé'), 'success'
     );
   }
 }

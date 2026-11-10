@@ -12,14 +12,18 @@ use CRM\Booking\Utils;
 class AppointmentList extends \CRM_Core_Page {
 
   public function run(): void {
-    \CRM_Core_Permission::check('access booking') || \CRM_Core_Error::statusBounce(ts('Access denied.'));
+    \CRM_Core_Permission::check('access booking') || \CRM_Core_Error::statusBounce(ts('Accès refusé.'));
     Utils::setBreadCrumb();
 
     $filters = [
       'therapist_id' => (int) \CRM_Utils_Request::retrieve('therapist_id', 'Positive', $this, FALSE, 0) ?: NULL,
+      // Par défaut : depuis le début du mois en cours, sans borne haute.
+      // Une page de rendez-vous sert d'abord à voir ce qui vient — un
+      // rendez-vous pris pour le mois suivant ne doit pas disparaître.
       'date_from'    => \CRM_Utils_Request::retrieve('date_from', 'String', $this, FALSE, date('Y-m-01')),
-      'date_to'      => \CRM_Utils_Request::retrieve('date_to', 'String', $this, FALSE, date('Y-m-t')),
+      'date_to'      => \CRM_Utils_Request::retrieve('date_to', 'String', $this, FALSE, ''),
       'status'       => \CRM_Utils_Request::retrieve('status', 'String', $this, FALSE, ''),
+      'order'        => 'ASC',
     ];
 
     $appointments = Appointment::getAll($filters, 100, 0);
@@ -56,11 +60,11 @@ class AppointmentList extends \CRM_Core_Page {
     $this->assign('therapists', Therapist::getAll());
     $this->assign('types', AppointmentType::getAll());
     $this->assign('statusOptions', [
-      ''          => ts('All statuses'),
-      'confirmed' => ts('Confirmed'),
-      'pending'   => ts('Pending'),
-      'completed' => ts('Completed'),
-      'cancelled' => ts('Cancelled'),
+      ''          => ts('Tous les statuts'),
+      'confirmed' => ts('Confirmé'),
+      'pending'   => ts('En attente'),
+      'completed' => ts('Terminé'),
+      'cancelled' => ts('Annulé'),
     ]);
     $this->assign('invoiceAvailable', Utils::isSwissQRInvoiceActive());
 

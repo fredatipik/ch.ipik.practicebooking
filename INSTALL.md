@@ -161,7 +161,20 @@ Create a WordPress page containing:
 [ipik_booking]
 ```
 
-Or, to preselect a type: `[ipik_booking type="3"]`
+The `type` attribute restricts the form to some appointment types, by id:
+
+| Shortcode | Result |
+|---|---|
+| `[ipik_booking]` | All active types are offered |
+| `[ipik_booking type="2,3"]` | Only types 2 and 3 are offered, in that order |
+| `[ipik_booking type="3"]` | Goes straight to the calendar for type 3 |
+
+Unknown or inactive ids are ignored. If none remains, the form shows a
+message instead of the full list.
+
+`type` shapes what the form displays; it is not an access control. Types
+restricted to existing patients are enforced on the server whatever the
+shortcode says.
 
 For a logged-in visitor whose WordPress account is linked to a CiviCRM
 contact, the form is pre-filled and remains editable.

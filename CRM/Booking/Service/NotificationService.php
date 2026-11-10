@@ -152,16 +152,27 @@ class NotificationService {
 
       // CRM_Utils_Mail::send() reçoit son argument par référence :
       // il faut lui passer une variable, non un tableau littéral.
+      $from = $this->getFromAddress();
       $mailParams = [
         'groupName' => 'booking_notification',
-        'from'      => $this->getFromAddress(),
+        'from'      => $from,
         'toName'    => $toName,
         'toEmail'   => $toEmail,
         'subject'   => $body['subject'],
         'html'      => $body['html'],
         'text'      => $body['text'],
       ];
-      \CRM_Utils_Mail::send($mailParams);
+
+      // send() ne lève pas d'exception lorsque le serveur SMTP refuse le
+      // message : il renvoie FALSE. Sans ce contrôle, l'échec passerait
+      // inaperçu — ni journal côté extension, ni indice sur l'expéditeur.
+      if (!\CRM_Utils_Mail::send($mailParams)) {
+        Utils::logError('Envoi email refusé par le serveur SMTP', [
+          'workflow' => $workflowName,
+          'from'     => $from,
+          'to'       => $toEmail,
+        ]);
+      }
     }
     catch (\Throwable $e) {
       Utils::logError('Envoi email échoué', [
@@ -278,23 +289,23 @@ class NotificationService {
     if ($workflowName === self::TPL_CANCEL) {
       $subject = "Annulation du rendez-vous du {$date}";
       $html = "<p>Le rendez-vous <strong>{$type}</strong> du <strong>{$date}</strong> "
-            . "at <strong>{$time}</strong> has been cancelled.</p>";
+            . "à <strong>{$time}</strong> a été annulé.</p>";
     }
     elseif ($workflowName === self::TPL_THERAPIST) {
-      $subject = "New appointment — {$date} at {$time}";
-      $html = "<p>A new appointment has been registered:</p>"
-            . "<ul><li>{$type}</li><li>{$date} at {$time}</li>"
+      $subject = "Nouveau rendez-vous — {$date} à {$time}";
+      $html = "<p>Un nouveau rendez-vous a été enregistré :</p>"
+            . "<ul><li>{$type}</li><li>{$date} à {$time}</li>"
             . "<li>Patient : " . ($tokens['booking.contact_name'] ?? '') . "</li></ul>";
     }
     elseif ($workflowName === self::TPL_REMINDER) {
       $subject = "Rappel : votre rendez-vous du {$date}";
       $html = "<p>Rappel : vous avez rendez-vous <strong>{$date}</strong> "
-            . "at <strong>{$time}</strong> for {$type}.</p>";
+            . "à <strong>{$time}</strong> pour {$type}.</p>";
     }
     else {
       $subject = "Confirmation de votre rendez-vous du {$date}";
-      $html = "<p>Your appointment <strong>{$type}</strong> is confirmed "
-            . "on <strong>{$date}</strong> at <strong>{$time}</strong>.</p>";
+      $html = "<p>Votre rendez-vous <strong>{$type}</strong> est confirmé "
+            . "pour le <strong>{$date}</strong> à <strong>{$time}</strong>.</p>";
     }
 
     return [
@@ -309,8 +320,8 @@ class NotificationService {
    */
   private function formatDateFr(\DateTime $date): string {
     $jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-    $mois  = ['', 'January', 'February', 'March', 'April', 'May', 'June',
-              'July', 'August', 'September', 'October', 'November', 'December'];
+    $mois  = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+              'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
     return sprintf(
       '%s %d %s %d',
@@ -325,51 +336,32 @@ class NotificationService {
    * Adresse d'expédition au format « "Nom" <email> » exigé par CRM_Utils_Mail.
    */
   private function getFromAddress(): string {
-    // Adresse choisie dans les paramètres de l'extension. Elle détermine
-    // aussi le serveur SMTP retenu lorsque ch.ipik.smtprouter est installée.
-    // La valeur reprend le libellé CiviCRM, de la forme « Nom <adresse> ».
-    $own = trim((string) Utils::getSetting('from_email', ''));
-    if ($own !== '') {
-      return $this->normalizeFrom($own);
-    }
-
-    // Sinon, adresse d'expédition du domaine CiviCRM
-    $name  = 'Cabinet';
-    $email = '';
-
-    try {
-      $name = \CRM_Core_BAO_Domain::getDomain()->name ?: $name;
-    }
-    catch (\Throwable $e) {
-    }
-
-    // Adresse d'expédition par défaut du domaine. La constante
-    // DOMAIN_PREFERENCES_NAME a disparu en CiviCRM 6 : on lit le réglage
-    // par les voies actuelles, avec repli sur l'ancienne API.
-    try {
-      $from = \Civi::settings()->get('fromEmailAddress');
-      if (empty($from)) {
-        $rows = \civicrm_api3('OptionValue', 'get', [
-          'option_group_id' => 'from_email_address',
-          'is_default'      => 1,
-          'options'         => ['limit' => 1],
-        ]);
-        if (!empty($rows['values'])) {
-          $from = reset($rows['values'])['label'] ?? '';
-        }
+    // 1. Adresse choisie dans les paramètres de l'extension. Elle détermine
+    //    aussi le serveur SMTP retenu lorsque ch.ipik.smtprouter est installée.
+    $stored = trim((string) Utils::getSetting('from_email', ''));
+    if ($stored !== '') {
+      $chosen = Utils::resolveFromSetting($stored);
+      if ($chosen !== '') {
+        return $this->normalizeFrom($chosen);
       }
-      if (!empty($from)) {
-        $email = $from;
-      }
-    }
-    catch (\Throwable $e) {
+      Utils::logError('Adresse d\'expédition choisie introuvable dans CiviCRM', [
+        'reglage' => $stored,
+      ]);
     }
 
-    if ($email === '') {
-      $email = 'noreply@' . (parse_url(\CRM_Utils_System::baseURL(), PHP_URL_HOST) ?: 'localhost');
+    // 2. Adresse d'expédition par défaut du domaine
+    $default = Utils::getDefaultFromAddress();
+    if ($default !== '') {
+      return $this->normalizeFrom($default);
     }
 
-    return $this->normalizeFrom($email, $name);
+    // 3. Dernier recours. Une adresse inventée sera très probablement
+    //    refusée par le SMTP (« Sender mismatch ») : on le signale.
+    $host = parse_url(\CRM_Utils_System::baseURL(), PHP_URL_HOST) ?: 'localhost';
+    Utils::logError('Aucune adresse d\'expédition configurée : repli sur une adresse générique', [
+      'repli' => 'noreply@' . $host,
+    ]);
+    return $this->normalizeFrom('noreply@' . $host);
   }
 
   /**

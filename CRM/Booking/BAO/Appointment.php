@@ -93,6 +93,8 @@ class Appointment {
       $params[$i++] = [$filters['status'], 'String'];
     }
 
+    $order = (($filters['order'] ?? 'DESC') === 'ASC') ? 'ASC' : 'DESC';
+
     // LIMIT et OFFSET directement dans le SQL pour éviter les problèmes d'index
     $sql = 'SELECT a.*,
                    at.label AS type_label, at.color AS type_color,
@@ -106,7 +108,7 @@ class Appointment {
             JOIN civicrm_contact t_contact ON t_contact.id = t.contact_id
             LEFT JOIN civicrm_booking_location l ON l.id = a.location_id
             WHERE ' . implode(' AND ', $where) . '
-            ORDER BY a.start_datetime DESC
+            ORDER BY a.start_datetime ' . $order . '
             LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
 
     $dao = \CRM_Core_DAO::executeQuery($sql, $params);
@@ -253,7 +255,7 @@ class Appointment {
       $notifier->sendCancellation($appt, $reason);
     }
     catch (\Throwable $e) {
-      \CRM\Booking\Utils::logError('Cancellation email failed', [
+      \CRM\Booking\Utils::logError('Email d\'annulation échoué', [
         'appointment_id' => $id,
         'error'          => $e->getMessage(),
       ]);

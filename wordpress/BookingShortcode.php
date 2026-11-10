@@ -31,8 +31,22 @@ class BookingShortcode {
 
     $nonce = wp_create_nonce('ipik_booking_nonce');
 
-    wp_enqueue_style('ipik-booking', Utils::resourceUrl() . '/css/booking.css', [], '0.5.0');
-    wp_enqueue_script('ipik-booking', Utils::resourceUrl() . '/js/booking-form.js', [], '0.5.0', TRUE);
+    // Le numéro de version des ressources suit la date de modification des
+    // fichiers : remplacer un fichier par FTP force le navigateur à le
+    // recharger, sans qu'il soit nécessaire de toucher à un numéro.
+    $root   = dirname(__DIR__);
+    $cssVer = (string) (@filemtime($root . '/css/booking.css') ?: '0.5.0');
+    $jsVer  = (string) (@filemtime($root . '/js/booking-form.js') ?: '0.5.0');
+
+    wp_enqueue_style('ipik-booking', Utils::resourceUrl() . '/css/booking.css', [], $cssVer);
+    wp_enqueue_script('ipik-booking', Utils::resourceUrl() . '/js/booking-form.js', [], $jsVer, TRUE);
+
+    // Types proposés : tous, ou ceux listés dans l'attribut « type ».
+    // Un seul type retenu saute l'étape de choix.
+    $types   = self::selectTypes((string) $atts['type']);
+    $preType = (trim((string) $atts['type']) !== '' && count($types) === 1)
+      ? (int) $types[0]['id']
+      : 0;
 
     // Données utilisateur connecté pour pré-remplissage
     $currentUser = NULL;
@@ -51,22 +65,21 @@ class BookingShortcode {
     wp_localize_script('ipik-booking', 'ipikBooking', [
       'ajaxUrl'     => admin_url('admin-ajax.php'),
       'nonce'       => $nonce,
-      'preType'     => intval($atts['type']),
+      'preType'     => $preType,
       'currentUser' => $currentUser,
       'l10n'        => [
         'selectType'      => __('Choisissez un type de rendez-vous', 'ipik-booking'),
-        'selectDate'      => __('Select a date to see available slots.', 'ipik-booking'),
-        'selectSlot'      => __('Choose a slot', 'ipik-booking'),
+        'selectDate'      => __('Sélectionnez une date pour voir les créneaux disponibles.', 'ipik-booking'),
+        'selectSlot'      => __('Choisissez un créneau', 'ipik-booking'),
         'noSlots'         => MessageService::get(MessageService::NO_SLOTS),
         'loading'         => __('Chargement…', 'ipik-booking'),
-        'errorGeneric'    => __('An error occurred. Please try again.', 'ipik-booking'),
-        'confirmSuccess'  => __('Your appointment is confirmed! A confirmation email has been sent to you.', 'ipik-booking'),
-        'emailRequired'   => __('Please enter your email to verify your eligibility.', 'ipik-booking'),
+        'errorGeneric'    => __('Une erreur est survenue. Veuillez réessayer.', 'ipik-booking'),
+        'confirmSuccess'  => __('Votre rendez-vous est confirmé ! Un email de confirmation vous a été envoyé.', 'ipik-booking'),
+        'emailRequired'   => __('Veuillez saisir votre email pour vérifier votre éligibilité.', 'ipik-booking'),
         'contactNotFound' => MessageService::get(MessageService::CONTACT_NOT_FOUND),
       ],
     ]);
 
-    $types    = AppointmentType::getAll();
     $messages = MessageService::all();
 
     ob_start();
@@ -74,6 +87,61 @@ class BookingShortcode {
     echo '<input type="hidden" id="ipik-nonce-value" value="' . esc_attr($nonce) . '" />';
     include dirname(__DIR__) . '/templates/wordpress/booking-form.php';
     return ob_get_clean();
+  }
+
+  /**
+   * Types de rendez-vous à proposer.
+   *
+   * Sans attribut, tous les types actifs. Avec « 2,3 », seulement ceux-là,
+   * dans l'ordre indiqué. Les identifiants inconnus ou inactifs sont
+   * ignorés ; si plus rien ne reste, la liste est vide — mieux vaut un
+   * formulaire sans choix que l'exposition de types que l'on voulait masquer.
+   */
+  private static function selectTypes(string $raw): array {
+    $all = AppointmentType::getAll();
+
+    // Aucun attribut : tous les types
+    if (trim($raw) === '') {
+      return $all;
+    }
+
+    // Attribut renseigné mais illisible (« abc ») : aucun type, plutôt que
+    // de retomber sur la liste complète
+    $wanted = self::parseTypeIds($raw);
+    if (!$wanted) {
+      return [];
+    }
+
+    $byId = [];
+    foreach ($all as $type) {
+      $byId[(int) $type['id']] = $type;
+    }
+
+    $selected = [];
+    foreach ($wanted as $id) {
+      if (isset($byId[$id])) {
+        $selected[] = $byId[$id];
+      }
+    }
+    return $selected;
+  }
+
+  /**
+   * « 2, 3 » ou « 2;3 » → [2, 3]. Les éléments non numériques sont écartés,
+   * les doublons aussi.
+   *
+   * @return int[]
+   */
+  private static function parseTypeIds(string $raw): array {
+    $ids = [];
+    foreach (preg_split('/[\s,;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY) as $part) {
+      if (!ctype_digit($part)) continue;
+      $id = (int) $part;
+      if ($id > 0 && !in_array($id, $ids, TRUE)) {
+        $ids[] = $id;
+      }
+    }
+    return $ids;
   }
 
   // -------------------------------------------------------------------------
@@ -90,7 +158,7 @@ class BookingShortcode {
         'error' => $e->getMessage(),
         'file'  => $e->getFile() . ':' . $e->getLine(),
       ]);
-      self::sendJson(FALSE, ['message' => 'Unable to load slots.']);
+      self::sendJson(FALSE, ['message' => 'Impossible de charger les créneaux.']);
     }
   }
 
@@ -120,7 +188,7 @@ class BookingShortcode {
     }
     catch (\Throwable $e) {
       Utils::logError('Erreur fatale dans check_email', ['error' => $e->getMessage()]);
-      self::sendJson(FALSE, ['message' => 'Verification failed.']);
+      self::sendJson(FALSE, ['message' => 'Vérification impossible.']);
     }
   }
 
@@ -128,7 +196,7 @@ class BookingShortcode {
     self::verifyNonce();
     $email  = sanitize_email($_POST['email']   ?? '');
     $typeId = intval($_POST['type_id'] ?? 0);
-    if (!$email || !$typeId) self::sendJson(FALSE, ['message' => 'Missing settings.']);
+    if (!$email || !$typeId) self::sendJson(FALSE, ['message' => 'Paramètres manquants.']);
     $gate = MemberGate::check($typeId, $email);
     self::sendJson(TRUE, ['allowed' => $gate['allowed'], 'reason' => $gate['reason']]);
   }
@@ -143,7 +211,7 @@ class BookingShortcode {
         'error' => $e->getMessage(),
         'file'  => $e->getFile() . ':' . $e->getLine(),
       ]);
-      self::sendJson(FALSE, ['message' => 'A technical error occurred. Please try again.']);
+      self::sendJson(FALSE, ['message' => 'Une erreur technique est survenue. Veuillez réessayer.']);
     }
   }
 
@@ -158,7 +226,7 @@ class BookingShortcode {
     $notes         = sanitize_textarea_field($_POST['notes']      ?? '');
 
     if (!$typeId || !$startDatetime || !$email) {
-      self::sendJson(FALSE, ['message' => 'Missing data.']);
+      self::sendJson(FALSE, ['message' => 'Données manquantes.']);
     }
 
     $wpUserId = is_user_logged_in() ? get_current_user_id() : NULL;
@@ -211,7 +279,7 @@ class BookingShortcode {
   private static function verifyNonce(): void {
     $nonce = $_POST['nonce'] ?? $_REQUEST['nonce'] ?? '';
     if (!wp_verify_nonce($nonce, 'ipik_booking_nonce')) {
-      self::sendJson(FALSE, ['message' => 'Security: invalid token.'], 403);
+      self::sendJson(FALSE, ['message' => 'Sécurité : token invalide.'], 403);
     }
   }
 }
