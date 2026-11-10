@@ -107,13 +107,17 @@
           {/if}
         </td>
         <td class="ipik-actions">
+          {if $st eq 'confirmed' or $st eq 'pending'}
+            <a href="{crmURL p='civicrm/booking/appointment/edit' q="id=`$appt_id`&reset=1"}"
+               title="{ts}Modifier le rendez-vous{/ts}">✎</a>
+          {/if}
           {if $st eq 'confirmed'}
             <a href="{crmURL p='civicrm/booking/appointment/complete' q="id=`$appt_id`"}"
                title="{ts}Marquer la séance comme effectuée{/ts}"
-               onclick="return confirm('{ts}Confirm that the session took place?{/ts}')">✓</a>
+               onclick="return confirm('{ts}Confirmer que la séance a eu lieu ?{/ts}')">✓</a>
             <a href="{crmURL p='civicrm/booking/appointment/cancel' q="id=`$appt_id`"}"
                title="{ts}Annuler — un email sera envoyé au patient et au intervenant·e{/ts}"
-               onclick="return confirm('{ts}Cancel this appointment? An email will be sent to the patient and the practitioner.{/ts}')">✕</a>
+               onclick="return confirm('{ts}Annuler ce rendez-vous ? Un email sera envoyé au patient et au intervenant·e.{/ts}')">✕</a>
           {/if}
         </td>
       </tr>

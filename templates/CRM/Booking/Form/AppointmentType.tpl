@@ -43,7 +43,7 @@
     <div class="label">{$form.requires_existing_contact.label}</div>
     <div class="content">
       {$form.requires_existing_contact.html}
-      <span class="description">{ts}Si coché, réservable uniquement par les contacts existants dans CiviCRM.{/ts}</span>
+      <span class="description">{ts}Si coché, le visiteur doit être connecté au site avec un compte rattaché à une fiche CiviCRM. Les autres sont invités à se connecter.{/ts}</span>
     </div>
     <div class="clear"></div>
   </div>

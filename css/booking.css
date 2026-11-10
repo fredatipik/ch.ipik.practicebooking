@@ -195,17 +195,26 @@
 }
 .ipik-summary__text::before { content: '📅 '; }
 
-/* ---- Email gate ---- */
-.ipik-email-gate {
+/* ---- Invitation à se connecter (types réservés) ---- */
+.ipik-notice {
   background: #fff8e1;
   border: 1px solid #ffe082;
   border-radius: var(--ipik-radius);
   padding: 1rem;
-  margin-bottom: 1rem;
+  margin-top: 1rem;
 }
-.ipik-email-gate__msg { margin: 0 0 .75rem; font-size: .9rem; }
-.ipik-gate-msg--error { color: var(--ipik-error); font-size: .875rem; margin-top: .5rem; }
-.ipik-gate-msg--info  { color: var(--ipik-gray-500); font-size: .875rem; margin-top: .5rem; }
+.ipik-notice__msg { margin: 0 0 .75rem; font-size: .9rem; }
+.ipik-notice__msg:last-child { margin-bottom: 0; }
+.ipik-notice__login {
+  display: inline-block;
+  padding: .5rem 1rem;
+  border-radius: var(--ipik-radius);
+  background: var(--ipik-primary);
+  color: #fff;
+  font-size: .9rem;
+  text-decoration: none;
+}
+.ipik-notice__login:hover { opacity: .9; }
 
 /* ---- Formulaire contact ---- */
 .ipik-fields {

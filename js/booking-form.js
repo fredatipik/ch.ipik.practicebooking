@@ -13,7 +13,6 @@
     selectedDatetime:  null,
     slots:             {},
     currentMonth:      new Date(),
-    emailGateCleared:  false,
   };
 
   const cfg   = window.ipikBooking || {};
@@ -41,10 +40,9 @@
     slotsContainer: document.getElementById('ipik-slots'),
     summary:        document.getElementById('ipik-summary'),
     summaryText:    document.querySelector('#ipik-summary .ipik-summary__text'),
-    emailGate:      document.getElementById('ipik-email-gate'),
-    emailCheck:     document.getElementById('ipik-email-check'),
-    emailCheckBtn:  document.getElementById('ipik-check-email-btn'),
-    emailGateResult:document.getElementById('ipik-email-gate-result'),
+    loginNotice:    document.getElementById('ipik-login-required'),
+    loginNoticeMsg: document.getElementById('ipik-login-required-msg'),
+    loginLink:      document.getElementById('ipik-login-link'),
     contactForm:    document.getElementById('ipik-booking-form-data'),
     fieldTypeId:    document.getElementById('ipik-field-type-id'),
     fieldStart:     document.getElementById('ipik-field-start'),
@@ -89,14 +87,38 @@
   // -------------------------------------------------------------------------
   // Étape 1 : Type de RDV
   // -------------------------------------------------------------------------
+  // Type réservé aux patients déjà suivis : il faut être connecté, avec un
+  // compte rattaché à une fiche CiviCRM (cfg.currentUser). Sinon, on invite à
+  // se connecter plutôt que d'ouvrir le calendrier. Le serveur revérifie.
+  function showLoginNotice() {
+    if (!el.loginNotice) return;
+    const loggedIn = !!cfg.isLoggedIn;
+    if (el.loginNoticeMsg) {
+      el.loginNoticeMsg.textContent = loggedIn ? (l10n.contactNotFound || '') : (l10n.loginRequired || '');
+    }
+    if (el.loginLink) {
+      el.loginLink.style.display = loggedIn ? 'none' : '';
+      if (cfg.loginUrl) el.loginLink.href = cfg.loginUrl;
+    }
+    el.loginNotice.style.display = '';
+  }
+  function hideLoginNotice() {
+    if (el.loginNotice) el.loginNotice.style.display = 'none';
+  }
+
   el.typeCards.forEach(card => {
     card.addEventListener('click', () => {
+      if (card.dataset.requiresExisting === '1' && !cfg.currentUser) {
+        showLoginNotice();
+        return;
+      }
+      hideLoginNotice();
+
       state.selectedTypeId   = parseInt(card.dataset.typeId, 10);
       state.requiresExisting = card.dataset.requiresExisting === '1';
       state.requiresAccount  = card.dataset.requiresAccount  === '1';
       state.duration         = parseInt(card.dataset.duration, 10) || 60;
       state.slots            = {};
-      state.emailGateCleared = false;
       el.typeCards.forEach(c => c.classList.remove('ipik-type-card--selected'));
       card.classList.add('ipik-type-card--selected');
       loadSlots();
@@ -219,12 +241,12 @@
     if (el.summaryText) el.summaryText.textContent = `${formatDisplay(dateStr)} à ${time}`;
     if (el.fieldTypeId) el.fieldTypeId.value = state.selectedTypeId;
     if (el.fieldStart)  el.fieldStart.value  = datetime;
-    if (state.requiresExisting && !state.emailGateCleared) {
-      if (el.emailGate)    el.emailGate.style.display    = '';
-      if (el.contactForm)  el.contactForm.style.display  = 'none';
-    } else {
-      if (el.emailGate)    el.emailGate.style.display    = 'none';
-      if (el.contactForm)  el.contactForm.style.display  = '';
+    if (el.contactForm) el.contactForm.style.display = '';
+
+    // Type réservé : l'adresse est celle du compte connecté, non modifiable
+    // (le serveur utilise de toute façon la fiche de la session)
+    if (el.emailEl) {
+      el.emailEl.readOnly = !!(state.requiresExisting && cfg.currentUser && cfg.currentUser.email);
     }
     goTo('contact');
   }
@@ -235,24 +257,6 @@
   // -------------------------------------------------------------------------
   // Étape 3 : Contact
   // -------------------------------------------------------------------------
-  el.emailCheckBtn?.addEventListener('click', () => {
-    const email = el.emailCheck?.value.trim();
-    if (!email) { showGateMessage(l10n.emailRequired, 'error'); return; }
-    el.emailCheckBtn.disabled = true;
-    showGateMessage(l10n.loading, 'info');
-    ajax('check_email', { email, type_id: state.selectedTypeId }).then(data => {
-      if (data.allowed) {
-        if (el.emailEl) el.emailEl.value = email;
-        state.emailGateCleared = true;
-        if (el.emailGate)   el.emailGate.style.display   = 'none';
-        if (el.contactForm) el.contactForm.style.display = '';
-      } else {
-        showGateMessage(l10n.contactNotFound, 'error');
-      }
-    }).catch(() => showGateMessage(l10n.errorGeneric, 'error'))
-      .finally(() => { if (el.emailCheckBtn) el.emailCheckBtn.disabled = false; });
-  });
-
   el.contactForm?.addEventListener('submit', e => {
     e.preventDefault();
     hideFormError();
@@ -278,7 +282,7 @@
 
   el.backBtns.forEach(btn => btn.addEventListener('click', () => goTo(btn.dataset.target)));
   el.newBookingBtn?.addEventListener('click', () => {
-    state.selectedTypeId = null; state.selectedDatetime = null; state.emailGateCleared = false;
+    state.selectedTypeId = null; state.selectedDatetime = null;
     el.contactForm?.reset();
     // Réappliquer le pré-remplissage
     if (cfg.currentUser) {
@@ -301,7 +305,6 @@
   function showFormError(msg) { if (el.formError) { el.formError.textContent = msg; el.formError.style.display = ''; el.formError.focus(); } }
   function hideFormError()    { if (el.formError) { el.formError.style.display = 'none'; el.formError.textContent = ''; } }
   function setSubmitting(on)  { if (el.submitBtn) { el.submitBtn.disabled = on; const s = el.submitBtn.querySelector('.ipik-submit__spinner'); if (s) s.style.display = on ? '' : 'none'; } }
-  function showGateMessage(msg, type) { if (el.emailGateResult) { el.emailGateResult.textContent = msg; el.emailGateResult.className = `ipik-gate-msg ipik-gate-msg--${type}`; } }
   // Format Y-m-d en heure LOCALE.
   // Ne jamais utiliser toISOString() : il convertit en UTC et décale d'un jour
   // pour tout fuseau positif (Europe/Zurich = UTC+1 ou +2).

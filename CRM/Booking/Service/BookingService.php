@@ -77,7 +77,7 @@ class BookingService {
       // 3. Trouver les intervenant·es disponibles sur ce créneau
       $candidates = $this->getAvailableCandidates($typeId, $startDatetime);
       if (empty($candidates)) {
-        return ['success' => FALSE, 'error' => 'This slot is no longer available.'];
+        return ['success' => FALSE, 'error' => 'Ce créneau n\'est plus disponible.'];
       }
 
       // 4. Sélectionner le intervenant·e selon la stratégie configurée
@@ -128,7 +128,7 @@ class BookingService {
     }
     catch (\Throwable $e) {
       Utils::logError('Erreur BookingService::book()', ['error' => $e->getMessage()]);
-      return ['success' => FALSE, 'error' => 'An error occurred. Please try again.'];
+      return ['success' => FALSE, 'error' => 'Une erreur est survenue. Veuillez réessayer.'];
     }
   }
 
@@ -206,7 +206,7 @@ class BookingService {
         $locationUrl,
         $appointment['start_datetime'],
         $appointment['end_datetime'],
-        $appointment['therapist_name'] ?? 'Busy'
+        $appointment['therapist_name'] ?? 'Occupé'
       );
 
       if ($eventId) {
@@ -229,6 +229,14 @@ class BookingService {
    * Résoudre le contact CiviCRM selon les règles du type de RDV.
    */
   private function resolveContact(array $contactData, array $type, ?int $wpUserId): array {
+    // Contact imposé par l'appelant (fiche de l'utilisateur connecté). Cette
+    // valeur n'est jamais lue dans les données du formulaire : le
+    // gestionnaire public la pose lui-même, après vérification de la session.
+    $forcedId = (int) ($contactData['forced_contact_id'] ?? 0);
+    if ($forcedId) {
+      return ['success' => TRUE, 'contact_id' => $forcedId];
+    }
+
     $email = trim($contactData['email'] ?? '');
 
     if (empty($email)) {
@@ -254,7 +262,7 @@ class BookingService {
     // Nouveau contact → créer dans CiviCRM
     $contactId = $this->createContact($contactData);
     if (!$contactId) {
-      return ['success' => FALSE, 'error' => 'Unable to create your profile. Please try again.'];
+      return ['success' => FALSE, 'error' => 'Impossible de créer votre profil. Veuillez réessayer.'];
     }
 
     // Créer compte WP si requis

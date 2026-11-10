@@ -16,32 +16,32 @@ class AppointmentType extends \CRM_Core_Form {
 
   public function preProcess(): void {
     parent::preProcess();
-    \CRM_Core_Permission::check('administer booking') || \CRM_Core_Error::statusBounce(ts('Access denied.'));
+    \CRM_Core_Permission::check('administer booking') || \CRM_Core_Error::statusBounce(ts('Accès refusé.'));
     $this->_id = (int) \CRM_Utils_Request::retrieve('id', 'Positive', $this, FALSE, 0);
     if ($this->_id) {
       $this->_type = BAOAppointmentType::getById($this->_id);
-      if (!$this->_type) \CRM_Core_Error::statusBounce(ts('Type not found.'));
+      if (!$this->_type) \CRM_Core_Error::statusBounce(ts('Type introuvable.'));
     }
-    $this->setTitle($this->_id ? ts('Edit appointment type') : ts('New appointment type'));
+    $this->setTitle($this->_id ? ts('Modifier le type de rendez-vous') : ts('Nouveau type de rendez-vous'));
     \CRM\Booking\Utils::setBreadCrumb([[
-      'title' => ts('Appointment types'),
+      'title' => ts('Types de rendez-vous'),
       'url'   => \CRM_Utils_System::url('civicrm/booking/appointment-types', 'reset=1'),
     ]]);
   }
 
   public function buildQuickForm(): void {
-    $this->add('text', 'label', ts('Label'), ['maxlength' => 255], TRUE);
+    $this->add('text', 'label', ts('Libellé'), ['maxlength' => 255], TRUE);
     $this->add('textarea', 'description', ts('Description'), ['rows' => 3, 'maxlength' => 1000]);
-    $this->add('text', 'duration_minutes', ts('Duration (minutes)'), ['size' => 5], TRUE);
-    $this->addRule('duration_minutes', ts('Positive integer required.'), 'positiveInteger');
-    $this->add('text', 'color', ts('Colour (hex)'), ['maxlength' => 7, 'class' => 'ipik-color-input'], TRUE);
-    $this->add('select', 'therapist_selector', ts('Assignment strategy'), Utils::getSelectorOptions());
-    $this->add('text', 'slot_interval_minutes', ts('Interval between slots (minutes)'), ['size' => 5]);
-    $this->addRule('slot_interval_minutes', ts('Positive integer required.'), 'positiveInteger');
-    $this->add('checkbox', 'requires_existing_contact', ts('Bookable by existing CiviCRM contact only'));
-    $this->add('checkbox', 'requires_account_creation', ts('WordPress account creation required'));
-    $this->add('text', 'weight', ts('Display order'), ['size' => 4]);
-    $this->add('checkbox', 'is_active', ts('Active'));
+    $this->add('text', 'duration_minutes', ts('Durée (minutes)'), ['size' => 5], TRUE);
+    $this->addRule('duration_minutes', ts('Entier positif requis.'), 'positiveInteger');
+    $this->add('text', 'color', ts('Couleur (hex)'), ['maxlength' => 7, 'class' => 'ipik-color-input'], TRUE);
+    $this->add('select', 'therapist_selector', ts('Stratégie d\'attribution'), Utils::getSelectorOptions());
+    $this->add('text', 'slot_interval_minutes', ts('Intervalle entre créneaux (minutes)'), ['size' => 5]);
+    $this->addRule('slot_interval_minutes', ts('Entier positif requis.'), 'positiveInteger');
+    $this->add('checkbox', 'requires_existing_contact', ts('Réservé aux patients connectés'));
+    $this->add('checkbox', 'requires_account_creation', ts('Création de compte WordPress obligatoire'));
+    $this->add('text', 'weight', ts('Ordre d\'affichage'), ['size' => 4]);
+    $this->add('checkbox', 'is_active', ts('Actif'));
 
     // Intervenant·es éligibles
     $this->_therapistOptions = [];
@@ -51,7 +51,7 @@ class AppointmentType extends \CRM_Core_Form {
     }
     $this->assign('therapistOptions', $this->_therapistOptions);
 
-    $this->addButtons([['type' => 'submit', 'name' => ts('Save'), 'isDefault' => TRUE]]);
+    $this->addButtons([['type' => 'submit', 'name' => ts('Enregistrer'), 'isDefault' => TRUE]]);
     $cancelURL = \CRM_Utils_System::url('civicrm/booking/appointment-types');
     $this->assign('cancelURL', $cancelURL);
     $this->assign('recordId', $this->_id);
@@ -102,7 +102,7 @@ class AppointmentType extends \CRM_Core_Form {
 
     BAOAppointmentType::save($params);
 
-    \CRM_Core_Session::setStatus(ts('Appointment type saved.'), ts('Success'), 'success');
+    \CRM_Core_Session::setStatus(ts('Type de rendez-vous enregistré.'), ts('Succès'), 'success');
     \CRM_Utils_System::redirect(\CRM_Utils_System::url('civicrm/booking/appointment-types'));
   }
 }

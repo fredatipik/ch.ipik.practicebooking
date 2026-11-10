@@ -6,26 +6,32 @@ use CRM\Booking\BAO\AppointmentType;
 /**
  * MemberGate — vérifie les droits d'accès au formulaire de booking
  * selon le type de rendez-vous et le statut du visiteur.
+ *
+ * Un type réservé aux patients déjà suivis exige une connexion au site, avec
+ * un compte rattaché à une fiche CiviCRM. Il n'existe volontairement aucune
+ * vérification « par adresse e-mail » : elle ne prouverait rien — n'importe
+ * qui peut saisir l'adresse d'autrui — et permettrait de sonder quelles
+ * adresses appartiennent à des patients du cabinet.
  */
 class MemberGate {
 
   /**
-   * Vérifier si le visiteur peut accéder à un type de RDV.
-   * Retourne ['allowed' => bool, 'reason' => string|null]
+   * Le visiteur peut-il accéder à ce type de rendez-vous ?
+   *
+   * @return array{allowed: bool, reason: string|null}
+   *   reason : invalid_type | login_required | contact_not_found
    */
-  public static function check(int $appointmentTypeId, ?string $email = NULL): array {
+  public static function check(int $appointmentTypeId): array {
     $type = AppointmentType::getById($appointmentTypeId);
     if (!$type || !$type['is_active']) {
       return ['allowed' => FALSE, 'reason' => 'invalid_type'];
     }
 
-    // Type réservé aux contacts CiviCRM existants
     if ($type['requires_existing_contact']) {
-      if (empty($email)) {
-        return ['allowed' => FALSE, 'reason' => 'email_required'];
+      if (!self::isLoggedIn()) {
+        return ['allowed' => FALSE, 'reason' => 'login_required'];
       }
-      $exists = self::contactExistsInCiviCRM($email);
-      if (!$exists) {
+      if (!self::getLoggedInCiviContact()) {
         return ['allowed' => FALSE, 'reason' => 'contact_not_found'];
       }
     }
@@ -34,20 +40,10 @@ class MemberGate {
   }
 
   /**
-   * Vérifier l'existence d'un contact dans CiviCRM par email.
-   * Utilisé côté frontend pour feedback immédiat (AJAX).
+   * Un utilisateur WordPress est-il connecté ?
    */
-  public static function contactExistsInCiviCRM(string $email): bool {
-    try {
-      $result = \civicrm_api3('Contact', 'getcount', [
-        'email'      => $email,
-        'is_deleted' => 0,
-      ]);
-      return (int) $result > 0;
-    }
-    catch (\Throwable $e) {
-      return FALSE;
-    }
+  public static function isLoggedIn(): bool {
+    return function_exists('is_user_logged_in') && is_user_logged_in();
   }
 
   /**

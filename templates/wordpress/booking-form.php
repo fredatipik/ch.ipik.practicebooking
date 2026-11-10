@@ -35,6 +35,12 @@ if (!defined('ABSPATH')) exit;
         </button>
       <?php endforeach; ?>
     </div>
+
+    <!-- Type réservé : invitation à se connecter -->
+    <div class="ipik-notice" id="ipik-login-required" style="display:none;" role="alert">
+      <p class="ipik-notice__msg" id="ipik-login-required-msg"></p>
+      <a class="ipik-notice__login" id="ipik-login-link" href="<?php echo esc_url(wp_login_url()); ?>" style="display:none;"><?php esc_html_e('Se connecter', 'ipik-booking'); ?></a>
+    </div>
   </div>
 
   <!-- Étape 2 : Sélection du créneau -->
@@ -70,18 +76,7 @@ if (!defined('ABSPATH')) exit;
       <p class="ipik-summary__text"></p>
     </div>
 
-    <!-- Message pour types requires_existing_contact : vérif email d'abord -->
-    <div class="ipik-email-gate" id="ipik-email-gate" style="display:none;">
-      <p class="ipik-email-gate__msg"><?php echo esc_html($messages['msg_email_gate'] ?? ''); ?></p>
-      <div class="ipik-field">
-        <label for="ipik-email-check"><?php esc_html_e('Votre email', 'ipik-booking'); ?> <span aria-hidden="true">*</span></label>
-        <input type="email" id="ipik-email-check" name="email_check" autocomplete="email" required />
-        <button type="button" id="ipik-check-email-btn"><?php esc_html_e('Vérifier', 'ipik-booking'); ?></button>
-      </div>
-      <div id="ipik-email-gate-result" aria-live="polite"></div>
-    </div>
-
-    <!-- Formulaire contact (toujours vide — pas de pré-remplissage affiché) -->
+    <!-- Formulaire contact (pré-rempli pour un utilisateur connecté) -->
     <form id="ipik-booking-form-data" novalidate>
       <input type="hidden" name="appointment_type_id" id="ipik-field-type-id" />
       <input type="hidden" name="start_datetime" id="ipik-field-start" />

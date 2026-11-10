@@ -93,25 +93,45 @@
   font-weight:600; font-size:.88rem; margin-bottom:.4rem;
   padding-bottom:.25rem; border-bottom:1px solid #e5e7eb;
 }
-.ipik-wd-days { display:grid; grid-template-columns:repeat(7, 1fr); gap:2px; }
-.ipik-wd-dow { text-align:center; font-size:.68rem; color:#9ca3af; padding-bottom:.2rem; }
-
-.ipik-wd-day {
-  aspect-ratio:1; border:1px solid transparent; border-radius:4px;
-  background:transparent; font-size:.78rem; cursor:pointer; padding:0;
-  display:flex; align-items:center; justify-content:center;
+/* Les boutons sont repris par le thème CiviCRM (fond plein, hauteur minimale,
+   marges) : chaque propriété structurante est donc imposée, avec une
+   spécificité supérieure à celle du thème. */
+.ipik-workdays .ipik-wd-days {
+  display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:3px;
+}
+.ipik-workdays .ipik-wd-days .ipik-wd-dow {
+  display:block !important; text-align:center !important;
+  font-size:.68rem; color:#9ca3af; padding-bottom:.2rem;
+}
+.ipik-workdays .ipik-wd-days .ipik-wd-day {
+  box-sizing:border-box !important;
+  display:flex !important; align-items:center !important; justify-content:center !important;
+  width:100% !important; min-width:0 !important; height:auto !important; min-height:0 !important;
+  aspect-ratio:1 / 1 !important;
+  margin:0 !important; padding:0 !important;
+  border:1px solid transparent !important; border-radius:4px !important;
+  background:transparent !important; background-image:none !important;
+  box-shadow:none !important; text-shadow:none !important;
+  color:inherit !important; font-family:inherit !important; font-size:.78rem !important;
+  font-weight:400 !important; line-height:1 !important;
+  text-transform:none !important; letter-spacing:normal !important;
+  cursor:pointer !important;
   transition:background .12s, border-color .12s;
 }
-.ipik-wd-day:hover:not(:disabled) { background:#eef2ff; border-color:#c7d2fe; }
-.ipik-wd-day.is-empty  { visibility:hidden; cursor:default; }
-.ipik-wd-day.is-past   { color:#d1d5db; cursor:not-allowed; }
-.ipik-wd-day.is-today  { font-weight:700; text-decoration:underline; }
-.ipik-wd-day.is-on {
-  background:var(--wd-color, #10b981); color:#fff; font-weight:600;
-  border-color:var(--wd-color, #10b981);
+.ipik-workdays .ipik-wd-days .ipik-wd-day:hover:not(:disabled) {
+  background:#eef2ff !important; border-color:#c7d2fe !important;
 }
-.ipik-wd-day.is-on:hover:not(:disabled) { opacity:.85; background:var(--wd-color, #10b981); }
-.ipik-wd-day.is-saving { opacity:.5; }
+.ipik-workdays .ipik-wd-days .ipik-wd-day.is-empty { visibility:hidden !important; cursor:default !important; }
+.ipik-workdays .ipik-wd-days .ipik-wd-day.is-past  { color:#c4c9d1 !important; cursor:not-allowed !important; }
+.ipik-workdays .ipik-wd-days .ipik-wd-day.is-today { font-weight:700 !important; text-decoration:underline !important; }
+.ipik-workdays .ipik-wd-days .ipik-wd-day.is-on {
+  background:var(--wd-color, #10b981) !important; color:#fff !important; font-weight:600 !important;
+  border-color:var(--wd-color, #10b981) !important;
+}
+.ipik-workdays .ipik-wd-days .ipik-wd-day.is-on:hover:not(:disabled) {
+  opacity:.85; background:var(--wd-color, #10b981) !important;
+}
+.ipik-workdays .ipik-wd-days .ipik-wd-day.is-saving { opacity:.5 !important; }
 
 .ipik-wd-footer { margin-top:1.5rem; }
 </style>

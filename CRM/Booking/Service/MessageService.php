@@ -26,24 +26,24 @@ class MessageService {
   public static function definitions(): array {
     return [
       self::EMAIL_GATE => [
-        'label'   => ts('Email address verification'),
-        'help'    => ts('Displayed for an appointment type reserved for existing patients, before selecting a slot.'),
-        'default' => ts('This appointment type is reserved for existing patients. Please enter your email address to continue.'),
+        'label'   => ts('Connexion requise'),
+        'help'    => ts('Affiché lorsqu\'un visiteur non connecté choisit un type de rendez-vous réservé aux patients déjà suivis.'),
+        'default' => ts('Ce type de rendez-vous est réservé aux patients déjà suivis. Merci de vous connecter pour poursuivre.'),
       ],
       self::CONTACT_NOT_FOUND => [
-        'label'   => ts('Address not recognised'),
-        'help'    => ts('Affiché lorsque l\'adresse saisie ne correspond à aucun patient enregistré.'),
-        'default' => ts('Nous ne retrouvons pas cette adresse. Si vous êtes déjà suivi·e chez nous, contactez-nous directement pour convenir d\'un rendez-vous.'),
+        'label'   => ts('Compte sans dossier patient'),
+        'help'    => ts('Affiché lorsqu\'une personne connectée n\'est rattachée à aucun dossier de patient·e.'),
+        'default' => ts('Votre compte n\'est rattaché à aucun dossier de patient·e. Si vous êtes déjà suivi·e chez nous, contactez-nous directement pour convenir d\'un rendez-vous.'),
       ],
       self::NO_SLOTS => [
-        'label'   => ts('No slot available'),
-        'help'    => ts('Displayed when the selected period has no availability.'),
-        'default' => ts('No slot available for this period.'),
+        'label'   => ts('Aucun créneau disponible'),
+        'help'    => ts('Affiché lorsque la période consultée ne comporte aucune disponibilité.'),
+        'default' => ts('Aucun créneau disponible sur cette période.'),
       ],
       self::CONFIRMATION => [
-        'label'   => ts('Booking confirmation'),
-        'help'    => ts('Displayed after the appointment is saved.'),
-        'default' => ts('A confirmation email has been sent. See you soon!'),
+        'label'   => ts('Confirmation de réservation'),
+        'help'    => ts('Affiché après l\'enregistrement du rendez-vous.'),
+        'default' => ts('Un e-mail de confirmation vous a été envoyé. À bientôt !'),
       ],
     ];
   }

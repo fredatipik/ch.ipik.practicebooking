@@ -18,8 +18,18 @@ function booking_civicrm_config(&$config): void {
   _booking_load_classes();
 
   if (function_exists('add_action')) {
-    add_action('init', ['CRM\Booking\WordPress\BookingShortcode', 'register']);
-
+    // Selon la version de CiviCRM, son démarrage peut survenir avant, pendant
+    // ou après l'action « init » de WordPress. Si « init » a déjà commencé,
+    // y accrocher un rappel ne sert plus à rien : le shortcode et les actions
+    // AJAX ne seraient alors jamais enregistrés, et la page afficherait le texte
+    // brut « [ipik_booking] ». On enregistre donc tout de suite dans ce cas.
+    // L'enregistrement est idempotent : le refaire plus tard est sans effet.
+    if (function_exists('did_action') && did_action('init')) {
+      \CRM\Booking\WordPress\BookingShortcode::register();
+    }
+    else {
+      add_action('init', ['CRM\Booking\WordPress\BookingShortcode', 'register']);
+    }
   }
 }
 
@@ -184,19 +194,19 @@ function booking_civicrm_navigationMenu(&$menu): void {
     'weight'     => 37,
   ]);
   foreach ([
-    ['label' => ts('All appointments'), 'name' => 'booking_appointments', 'url' => 'civicrm/booking/appointments',      'permission' => 'access booking'],
-    ['label' => ts('Appointment types'), 'name' => 'booking_types',        'url' => 'civicrm/booking/appointment-types', 'permission' => 'administer booking'],
-    ['label' => ts('Practitioners'),       'name' => 'booking_therapists',   'url' => 'civicrm/booking/therapists',        'permission' => 'administer booking'],
-    ['label' => ts('Rooms'),               'name' => 'booking_locations',    'url' => 'civicrm/booking/locations',         'permission' => 'administer booking'],
-    ['label' => ts('Settings'),           'name' => 'booking_settings',     'url' => 'civicrm/booking/settings',          'permission' => 'administer booking'],
+    ['label' => ts('Tous les rendez-vous'), 'name' => 'booking_appointments', 'url' => 'civicrm/booking/appointments',      'permission' => 'access booking'],
+    ['label' => ts('Types de rendez-vous'), 'name' => 'booking_types',        'url' => 'civicrm/booking/appointment-types', 'permission' => 'administer booking'],
+    ['label' => ts('Intervenant·es'),       'name' => 'booking_therapists',   'url' => 'civicrm/booking/therapists',        'permission' => 'administer booking'],
+    ['label' => ts('Locaux'),               'name' => 'booking_locations',    'url' => 'civicrm/booking/locations',         'permission' => 'administer booking'],
+    ['label' => ts('Paramètres'),           'name' => 'booking_settings',     'url' => 'civicrm/booking/settings',          'permission' => 'administer booking'],
   ] as $item) {
     _booking_insert_nav($menu, 'booking_root', $item + ['is_active' => 1]);
   }
 }
 
 function booking_civicrm_permission(&$permissions): void {
-  $permissions['access booking']     = ['label' => ts('Booking: access appointments')];
-  $permissions['administer booking'] = ['label' => ts('Booking: administer')];
+  $permissions['access booking']     = ['label' => ts('Booking : accéder aux rendez-vous')];
+  $permissions['administer booking'] = ['label' => ts('Booking : administrer')];
 }
 
 function booking_civicrm_tabset($tabsetName, &$tabs, $context): void {
@@ -210,7 +220,7 @@ function booking_civicrm_tabset($tabsetName, &$tabs, $context): void {
   // Thérapeute : agenda complet (disponibilités, congés, rendez-vous)
   if (\CRM\Booking\BAO\Therapist::isTherapist($contactId)) {
     $tabs['booking_agenda'] = [
-      'title'  => ts('Calendar'),
+      'title'  => ts('Agenda'),
       'link'   => \CRM\Booking\Utils::agendaTabUrl($contactId),
       'valid'  => TRUE, 'active' => TRUE, 'current' => FALSE, 'weight' => 100,
     ];
@@ -226,7 +236,7 @@ function booking_civicrm_tabset($tabsetName, &$tabs, $context): void {
   if (!$count) return;
 
   $tabs['booking_appointments'] = [
-    'title'  => ts('Appointment'),
+    'title'  => ts('Rendez-vous'),
     'count'  => $count,
     'link'   => \CRM_Utils_System::url('civicrm/booking/contact-appointments', ['cid' => $contactId]),
     'valid'  => TRUE, 'active' => TRUE, 'current' => FALSE, 'weight' => 100,
@@ -384,6 +394,7 @@ function _booking_get_routes(): array {
     'civicrm/booking/contact-appointments'  => ['page_callback' => 'CRM_Booking_Page_ContactAppointments','title' => 'Rendez-vous',           'permission' => 'access booking'],
     'civicrm/booking/dashlet'               => ['page_callback' => 'CRM_Booking_Page_Dashlet',           'title' => 'Mes rendez-vous',       'permission' => 'access booking'],
     'civicrm/booking/appointment/new'       => ['page_callback' => 'CRM_Booking_Form_Appointment',       'title' => 'Nouveau rendez-vous',   'permission' => 'access booking'],
+    'civicrm/booking/appointment/edit'      => ['page_callback' => 'CRM_Booking_Form_Appointment',       'title' => 'Modifier un rendez-vous','permission' => 'access booking'],
     'civicrm/booking/appointment/slots'     => ['page_callback' => 'CRM_Booking_Page_AppointmentSlots',  'title' => 'Creneaux disponibles',  'permission' => 'access booking'],
     'civicrm/booking/appointment/cancel'    => ['page_callback' => 'CRM_Booking_Page_AppointmentAction',  'title' => 'Annuler RDV',           'permission' => 'access booking'],
     'civicrm/booking/appointment/complete'  => ['page_callback' => 'CRM_Booking_Page_AppointmentAction',  'title' => 'Terminer RDV',          'permission' => 'access booking'],

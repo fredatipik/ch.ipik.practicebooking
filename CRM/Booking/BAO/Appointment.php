@@ -179,6 +179,104 @@ class Appointment {
   /**
    * Créer l'Activity CiviCRM correspondant au RDV.
    */
+  /**
+   * Modifier un rendez-vous : type, intervenant·e, horaire, local, notes.
+   *
+   * Le patient ne change pas : un autre patient serait un autre rendez-vous.
+   * Les événements d'agenda ne sont pas touchés ici — l'appelant les retire
+   * avant (detachFromCalendars) et les recrée après, car ils dépendent de
+   * l'ancien comme du nouvel·le intervenant·e et local.
+   */
+  public static function update(int $id, array $params): void {
+    // CRM_Core_DAO refuse NULL sur un paramètre typé : le local absent passe
+    // donc par une requête où il est posé littéralement.
+    $common = [
+      1 => [(int) $params['appointment_type_id'], 'Integer'],
+      2 => [(int) $params['therapist_id'], 'Integer'],
+      3 => [$params['start_datetime'], 'String'],
+      4 => [$params['end_datetime'], 'String'],
+      5 => [(string) ($params['notes'] ?? ''), 'String'],
+      6 => [$id, 'Integer'],
+    ];
+
+    $locationId = !empty($params['location_id']) ? (int) $params['location_id'] : NULL;
+
+    if ($locationId === NULL) {
+      \CRM_Core_DAO::executeQuery(
+        'UPDATE civicrm_booking_appointment
+         SET appointment_type_id = %1, therapist_id = %2, start_datetime = %3,
+             end_datetime = %4, notes = %5, location_id = NULL
+         WHERE id = %6',
+        $common
+      );
+    }
+    else {
+      \CRM_Core_DAO::executeQuery(
+        'UPDATE civicrm_booking_appointment
+         SET appointment_type_id = %1, therapist_id = %2, start_datetime = %3,
+             end_datetime = %4, notes = %5, location_id = %7
+         WHERE id = %6',
+        $common + [7 => [$locationId, 'Integer']]
+      );
+    }
+
+    self::updateActivity($id, $params);
+  }
+
+  /**
+   * Répercuter la modification sur l'activité CiviCRM liée, si elle existe.
+   */
+  private static function updateActivity(int $id, array $params): void {
+    $activityId = (int) \CRM_Core_DAO::singleValueQuery(
+      'SELECT civicrm_activity_id FROM civicrm_booking_appointment WHERE id = %1',
+      [1 => [$id, 'Integer']]
+    );
+    if (!$activityId) {
+      return;
+    }
+
+    try {
+      $type = AppointmentType::getById((int) $params['appointment_type_id']);
+
+      $apiParams = [
+        'id'                 => $activityId,
+        'subject'            => $type ? $type['label'] : 'Rendez-vous',
+        'activity_date_time' => $params['start_datetime'],
+        'duration'           => $type['duration_minutes'] ?? 60,
+        'details'            => sprintf(
+          'Rendez-vous #%d — %s',
+          $id,
+          \CRM\Booking\Utils::formatDatetime($params['start_datetime'])
+        ),
+      ];
+
+      $assignee = self::getTherapistContactId((int) $params['therapist_id']);
+      if ($assignee) {
+        $apiParams['assignee_id'] = $assignee;
+      }
+
+      \civicrm_api3('Activity', 'create', $apiParams);
+    }
+    catch (\Throwable $e) {
+      \CRM\Booking\Utils::logError('Échec mise à jour Activity', [
+        'appointment_id' => $id,
+        'error'          => $e->getMessage(),
+      ]);
+    }
+  }
+
+  /**
+   * Retirer le rendez-vous des agendas de l'intervenant·e et du local.
+   * À appeler AVANT de modifier le rendez-vous : les événements se retrouvent
+   * par l'ancien·ne intervenant·e et l'ancien local.
+   */
+  public static function detachFromCalendars(int $id): void {
+    $appt = self::getById($id);
+    if ($appt) {
+      self::removeFromCalendars($id, $appt);
+    }
+  }
+
   private static function createActivity(int $appointmentId, array $params): ?int {
     // Les activités sont visibles dans les calendriers et les recherches
     // CiviCRM. Dans un cadre où la seule existence d'un rendez-vous est

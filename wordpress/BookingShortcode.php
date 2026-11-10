@@ -15,7 +15,7 @@ class BookingShortcode {
 
   public static function register(): void {
     add_shortcode('ipik_booking', [self::class, 'render']);
-    $actions = ['get_slots', 'check_email', 'submit_booking'];
+    $actions = ['get_slots', 'submit_booking'];
     foreach ($actions as $action) {
       add_action("wp_ajax_ipik_booking_{$action}",        [self::class, "ajax_{$action}"]);
       add_action("wp_ajax_nopriv_ipik_booking_{$action}", [self::class, "ajax_{$action}"]);
@@ -62,11 +62,16 @@ class BookingShortcode {
       }
     }
 
+    // Où ramener la personne après connexion : la page du formulaire
+    $loginUrl = wp_login_url(get_permalink() ?: home_url('/'));
+
     wp_localize_script('ipik-booking', 'ipikBooking', [
       'ajaxUrl'     => admin_url('admin-ajax.php'),
       'nonce'       => $nonce,
       'preType'     => $preType,
       'currentUser' => $currentUser,
+      'isLoggedIn'  => MemberGate::isLoggedIn(),
+      'loginUrl'    => $loginUrl,
       'l10n'        => [
         'selectType'      => __('Choisissez un type de rendez-vous', 'ipik-booking'),
         'selectDate'      => __('Sélectionnez une date pour voir les créneaux disponibles.', 'ipik-booking'),
@@ -75,7 +80,7 @@ class BookingShortcode {
         'loading'         => __('Chargement…', 'ipik-booking'),
         'errorGeneric'    => __('Une erreur est survenue. Veuillez réessayer.', 'ipik-booking'),
         'confirmSuccess'  => __('Votre rendez-vous est confirmé ! Un email de confirmation vous a été envoyé.', 'ipik-booking'),
-        'emailRequired'   => __('Veuillez saisir votre email pour vérifier votre éligibilité.', 'ipik-booking'),
+        'loginRequired'   => MessageService::get(MessageService::EMAIL_GATE),
         'contactNotFound' => MessageService::get(MessageService::CONTACT_NOT_FOUND),
       ],
     ]);
@@ -144,6 +149,17 @@ class BookingShortcode {
     return $ids;
   }
 
+  /**
+   * Message adressé au visiteur lorsque l'accès à un type est refusé.
+   */
+  private static function gateMessage(?string $reason): string {
+    return match ($reason) {
+      'login_required'    => MessageService::get(MessageService::EMAIL_GATE),
+      'contact_not_found' => MessageService::get(MessageService::CONTACT_NOT_FOUND),
+      default             => 'Ce type de rendez-vous n\'est pas disponible.',
+    };
+  }
+
   // -------------------------------------------------------------------------
   // AJAX
   // -------------------------------------------------------------------------
@@ -169,6 +185,12 @@ class BookingShortcode {
     $dateTo   = sanitize_text_field($_POST['date_to']   ?? date('Y-m-d', strtotime('+30 days')));
     if (!$typeId) self::sendJson(FALSE, ['message' => 'Type invalide.']);
 
+    // Un type réservé n'expose pas ses disponibilités aux visiteurs non connectés
+    $gate = MemberGate::check($typeId);
+    if (!$gate['allowed']) {
+      self::sendJson(FALSE, ['message' => self::gateMessage($gate['reason'])]);
+    }
+
     $slotService = new SlotService();
     $slots = $slotService->getAvailableSlots($typeId, $dateFrom, $dateTo);
 
@@ -179,26 +201,6 @@ class BookingShortcode {
       $grouped[$date][] = ['datetime' => $slot, 'time' => $time];
     }
     self::sendJson(TRUE, ['slots' => $grouped]);
-  }
-
-  public static function ajax_check_email(): void {
-    ob_start();
-    try {
-      self::doCheckEmail();
-    }
-    catch (\Throwable $e) {
-      Utils::logError('Erreur fatale dans check_email', ['error' => $e->getMessage()]);
-      self::sendJson(FALSE, ['message' => 'Vérification impossible.']);
-    }
-  }
-
-  private static function doCheckEmail(): void {
-    self::verifyNonce();
-    $email  = sanitize_email($_POST['email']   ?? '');
-    $typeId = intval($_POST['type_id'] ?? 0);
-    if (!$email || !$typeId) self::sendJson(FALSE, ['message' => 'Paramètres manquants.']);
-    $gate = MemberGate::check($typeId, $email);
-    self::sendJson(TRUE, ['allowed' => $gate['allowed'], 'reason' => $gate['reason']]);
   }
 
   public static function ajax_submit_booking(): void {
@@ -231,15 +233,34 @@ class BookingShortcode {
 
     $wpUserId = is_user_logged_in() ? get_current_user_id() : NULL;
 
+    // Type réservé aux patients déjà suivis : la personne doit être connectée,
+    // et c'est SA fiche qui est utilisée — jamais l'adresse saisie dans le
+    // formulaire, qui permettrait de réserver au nom de quelqu'un d'autre.
+    $gate = MemberGate::check($typeId);
+    if (!$gate['allowed']) {
+      self::sendJson(FALSE, ['message' => self::gateMessage($gate['reason'])]);
+    }
+
+    $forcedContactId = 0;
+    $type = AppointmentType::getById($typeId);
+    if (!empty($type['requires_existing_contact'])) {
+      $member          = MemberGate::getLoggedInCiviContact();
+      $forcedContactId = (int) ($member['contact_id'] ?? $member['id'] ?? 0);
+      if (!empty($member['email'])) {
+        $email = $member['email'];
+      }
+    }
+
     $bookingService = new BookingService();
     $result = $bookingService->book([
       'appointment_type_id' => $typeId,
       'start_datetime'      => $startDatetime,
       'contact'             => [
-        'first_name' => $firstName,
-        'last_name'  => $lastName,
-        'email'      => $email,
-        'phone'      => $phone,
+        'first_name'        => $firstName,
+        'last_name'         => $lastName,
+        'email'             => $email,
+        'phone'             => $phone,
+        'forced_contact_id' => $forcedContactId,
       ],
       'wp_user_id' => $wpUserId,
       'notes'      => $notes,
