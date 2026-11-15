@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.1 — 2026-11-15
+
+### Fixed
+
+- Creating or editing an appointment from the back office: choosing
+  *Choose among available slots* then picking a slot was refused with
+  "Choose a slot, or switch to free entry". The slot list is filled by
+  JavaScript, and the form framework discarded a value absent from its
+  server-side options.
+
 ## 0.6.0 — 2026-11-10
 
 ### Changed — read before upgrading a production site

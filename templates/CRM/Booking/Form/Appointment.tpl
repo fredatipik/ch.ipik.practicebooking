@@ -58,7 +58,10 @@
   <div class="crm-section" id="ipik-slot-free">
     <div class="label">{$form.slot.label}</div>
     <div class="content">
-      {$form.slot.html}
+      {* <select> écrit à la main : voir le commentaire de Form/Appointment.php *}
+      <select name="slot" id="ipik-slot" class="crm-form-select">
+        <option value="">{ts}— Choisir un type et un·e intervenant·e —{/ts}</option>
+      </select>
       <span class="description" id="ipik-slot-hint">
         {ts}Choisissez un type et un·e intervenant·e pour voir les créneaux disponibles.{/ts}
       </span>

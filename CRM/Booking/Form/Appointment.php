@@ -105,8 +105,11 @@ class Appointment extends \CRM_Core_Form {
     }
     $this->add('select', 'slot_mode', ts('Horaire'), $modes, TRUE);
 
-    // Créneaux libres, alimentés en JavaScript
-    $this->add('select', 'slot', ts('Créneau'), ['' => ts('— Choisir un type et un·e intervenant·e —')]);
+    // Créneau choisi. Déclaré comme champ texte, mais rendu en <select> par le
+    // gabarit : la liste est remplie par JavaScript, et un <select> QuickForm
+    // ne restitue que les valeurs présentes dans ses options déclarées côté
+    // serveur — il écarterait donc le créneau choisi.
+    $this->add('text', 'slot', ts('Créneau'));
 
     // Saisie libre
     $this->add('text', 'manual_date', ts('Date'));
